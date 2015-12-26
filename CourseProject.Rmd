@@ -1,0 +1,110 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Eric Fruelda"
+date: "Saturday, December 26, 2015"
+output: html_document
+---
+
+##About the Project
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it.
+
+In this project, we will use the data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. The goal of this project is to predict the manner in which the participants did the exercise. This is the "classe" variable in the training set.
+
+##Dataset
+
+The training dataset for this project can be downloaded here: <https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv>
+
+The testing dataset can be downloaded here: <https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv>
+
+##Methodology
+
+The following steps were done for this report.
+STEP 1. Data Processing
+  1-1.  Load the training data.
+  1-2.  Split the data.
+  1-3.  Clean the data.
+STEP 2. Building the Model
+  2-1.  Fit a random forest model.
+  2-2.  Test the model.
+  2-2.  Evaluate on the testing data.
+STEP 3. Discussions
+
+##STEP 1. Data Processing
+
+###Loading Libraries and Seed
+Required libraries are loaded. Seed is also set for reproducibility.
+```{r loadlib, echo=TRUE, results='hide', warning=FALSE}
+library(caret)
+library(kernlab)
+library(randomForest)
+set.seed(12344)
+```
+
+###Loading Data
+Loading data from pml-training.csv (located in working directory). Some results will be hidden from the report for clarity and space considerations.
+```{r loaddata, echo=TRUE, results='hide'}
+# Loading the training dataset replacing all missing values with "NA"
+trainingdata <- read.csv("pml-training.csv", na.strings=c("NA","#DIV/0!", ""))
+dim(trainingdata) #Exploratory data analysis
+colnames(trainingdata)
+summary(trainingdata)
+# Plotting classe variable
+plot(trainingdata$classe, main="Plot of the variable classe in the Training Dataset", xlab="classe levels", ylab="Frequency")
+```
+
+###Splitting Data
+Spliting the training data to 75% training set and 25% testing set.
+```{r splitdata, echo=TRUE, results='hide'}
+splitdataset <- createDataPartition(y=trainingdata$classe, p=0.75, list=FALSE)
+training <- trainingdata[splitdataset, ] 
+testing <- trainingdata[-splitdataset, ]
+```
+
+###Data Cleaning
+Cleaning of the training and testing sets in preparation for model fitting.
+```{r cleandata, echo=TRUE, results='hide'}
+training<-training[,colSums(is.na(training)) == 0] # Removing missing values
+training<-training[,-c(1:7)] #Removing irrelevant/non-numeric variables
+dim(training) #Rechecking dimensions of data
+
+testing<-testing[,colSums(is.na(testing)) == 0] # Removing missing values
+testing<-testing[,-c(1:7)] #Removing irrelevant/non-numeric variables
+dim(testing) #Rechecking dimensions of data
+```
+
+##STEP 2. Building the Model
+
+###Fitting Random Forest Model
+Random forest model was selected for its known accuracy.
+```{r fitRF, echo=TRUE}
+# Using the clean training data to fit random forest model
+fitmodelRF <- randomForest(classe ~ ., data=training, do.trace=F)
+print(fitmodelRF) # Displaying model
+```
+
+###Testing Model
+The resulting model is tested using the testing set splitted in the beginning.
+```{r testRF, echo=TRUE}
+# Creating confusion matrix with testing set to evaluate accuracy of the model
+confusionMatrix(testing$classe,predict(fitmodelRF,testing))
+```
+As expected, the model had an overall accuracy of 0.9941, or 99.41% at 95% CI:(0.9915, 0.996). Therefore, the out-of-sample error rate was 0.0059, or 00.59%.
+
+###Evaluating Model and Prediction
+Loading data from pml-testing.csv (located in working directory) for prediction.
+```{r evalRF, echo=TRUE}
+# Loading the testing dataset replacing all missing values with "NA"
+testingdata <- read.csv("pml-testing.csv", na.strings=c("NA","#DIV/0!", ""))
+testingdata<-testingdata[,colSums(is.na(testingdata)) == 0] # Removing missing values
+testingdata<-testingdata[,-c(1:7)] #Removing irrelevant/non-numeric variables
+# Evaluating model on testing dataset
+prediction <- predict(fitmodelRF, testingdata)
+prediction
+```
+
+##Discussions
+In this report, 75% of the total observations were used to build a model by random forest method with the remaining 25% of the observations used for model testing (cross-validation). The model statistics by class showed that the built model had the overall accuracy of 99.41% for the testing set. The out-of-sample error rate was 00.59%. The sensitivity was in between 98%-99.9% and the specificity was over 99% for all classes. With an accuracy above 99% on our cross-validation data, we can expect that very few, or none, of the test samples will be missclassified.
+
+##Source of Data and Further Reading
+For further reading, the data for this project came from this source: <http://groupware.les.inf.puc-rio.br/har>
